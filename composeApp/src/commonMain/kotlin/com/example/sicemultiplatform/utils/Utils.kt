@@ -39,8 +39,7 @@ data class MateriaCarga(
 fun parsearCargaAcademica(jsonString: String): List<MateriaCarga> {
     val lista = mutableListOf<MateriaCarga>()
     try {
-        // ESCUDO DE SEGURIDAD
-        if (jsonString.contains("Cargando datos")) return lista
+        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return lista
 
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
         for (item in jsonArray) {
@@ -75,8 +74,7 @@ data class PerfilAcademico(
 
 fun parsearPerfilAcademico(jsonString: String): PerfilAcademico? {
     return try {
-        // ESCUDO DE SEGURIDAD (Regresa null si no hay datos)
-        if (jsonString.contains("Cargando datos")) return null
+        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return null
 
         val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
         PerfilAcademico(
@@ -108,8 +106,8 @@ data class MateriaKardex(
 fun parsearKardex(jsonString: String): List<MateriaKardex> {
     val lista = mutableListOf<MateriaKardex>()
     try {
-        // ESCUDO DE SEGURIDAD
-        if (jsonString.contains("Cargando datos")) return lista
+        // ESCUDO DE SEGURIDAD MEJORADO
+        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return lista
 
         val startIndex = jsonString.indexOfFirst { it == '{' || it == '[' }
         val endIndex = jsonString.indexOfLast { it == '}' || it == ']' }
@@ -168,8 +166,7 @@ data class CalificacionUnidad(
 fun parsearCalifUnidades(jsonString: String): List<CalificacionUnidad> {
     val lista = mutableListOf<CalificacionUnidad>()
     try {
-        // ESCUDO DE SEGURIDAD
-        if (jsonString.contains("Cargando datos")) return lista
+        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return lista
 
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
 
@@ -204,8 +201,7 @@ data class CalificacionFinal(
 fun parsearCalificacionFinal(jsonString: String): List<CalificacionFinal> {
     val lista = mutableListOf<CalificacionFinal>()
     try {
-        // ESCUDO DE SEGURIDAD
-        if (jsonString.contains("Cargando datos")) return lista
+        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return lista
 
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
 

@@ -56,24 +56,28 @@ class LoginViewModel : ViewModel() {
                 val response = NetworkModule.httpClient.post(NetworkModule.BASE_URL) {
                     header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
                     header("SOAPAction", "http://tempuri.org/accesoLogin")
+                    header("Cookie", "AspxAutoDetectCookieSupport=1")
                     setBody(soapRequest)
                 }
 
-                // --- ¡NUEVO!: ATRAPAMOS LA COOKIE MANUALMENTE ---
-                val rawCookies = response.headers.getAll("Set-Cookie")
-                var sessionCookies = ""
-                rawCookies?.forEach { cookieString ->
-                    // Cortamos la basura y nos quedamos solo con la llave pura (.ASPXAUTH)
-                    sessionCookies += cookieString.substringBefore(";") + "; "
-                }
-                NetworkModule.cookieSesion = sessionCookies
-                // ------------------------------------------------
-
-                // 3. LEEMOS LA RESPUESTA
                 val responseBody = response.bodyAsText()
 
-                // Verificamos si la respuesta XML fue exitosa ("accesoLoginResult" suele traer un boolean o un XML)
+                // --- VAMOS A VER QUÉ NOS CONTESTA EL LOGIN ---
+                println("====== RESPUESTA CRUDA DEL LOGIN ======")
+                println(responseBody)
+
+                var sessionCookies = ""
+                response.setCookie().forEach { cookie ->
+                    sessionCookies += "${cookie.name}=${cookie.value}; "
+                }
+                NetworkModule.cookieSesion = sessionCookies
+
+                println("=== COOKIE GUARDADA: ${NetworkModule.cookieSesion} ===")
+                println("=======================================")
+
+                // 3. LEEMOS LA RESPUESTA
                 val resultadoLogin = XmlParser.extraerContenidoXml(responseBody, "accesoLoginResult")
+
 
                 // Aquí depende exactamente de qué regresa tu servidor en caso de error
                 if (resultadoLogin.contains("false", ignoreCase = true) || resultadoLogin.contains("error", ignoreCase = true)) {
@@ -102,6 +106,9 @@ class LoginViewModel : ViewModel() {
             isLoading = true
             errorMessage = ""
             try {
+                // 1. Limpiamos la pantalla para que no se mezcle información
+                profileData = ""
+
                 val soapActionName = when (seccion) {
                     "PERFIL" -> "getAlumnoAcademicoWithLineamiento"
                     "CARGA" -> "getCargaAcademicaByAlumno"
@@ -111,35 +118,30 @@ class LoginViewModel : ViewModel() {
                     else -> throw Exception("Sección desconocida")
                 }
 
-                // El SICENET es delicado con los nombres de las variables
-                val parametroXML = if (seccion == "PERFIL") {
-                    "<strMatricula>$matricula</strMatricula>"
-                } else {
-                    "<aluControl>$matricula</aluControl>"
+                // 2. XML COMPLETAMENTE PLANO
+                // Sin saltos de línea ni espacios que confundan al servidor antiguo
+                val bodyContent = when (seccion) {
+                    "PERFIL" -> "<getAlumnoAcademicoWithLineamiento xmlns=\"http://tempuri.org/\" />"
+                    "CARGA" -> "<getCargaAcademicaByAlumno xmlns=\"http://tempuri.org/\" />"
+                    "KARDEX" -> "<getAllKardexConPromedioByAlumno xmlns=\"http://tempuri.org/\"><aluLineamiento>1</aluLineamiento></getAllKardexConPromedioByAlumno>"
+                    "CALIF_UNI" -> "<getCalifUnidadesByAlumno xmlns=\"http://tempuri.org/\" />"
+                    "CALIF_FINAL" -> "<getAllCalifFinalByAlumnos xmlns=\"http://tempuri.org/\"><bytModEducativo>1</bytModEducativo></getAllCalifFinalByAlumnos>"
+                    else -> ""
                 }
 
-                val soapRequest = """
-                    <?xml version="1.0" encoding="utf-8"?>
-                    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-                      <soap:Body>
-                        <$soapActionName xmlns="http://tempuri.org/">
-                          $parametroXML
-                        </$soapActionName>
-                      </soap:Body>
-                    </soap:Envelope>
-                """.trimIndent()
+                val soapRequest = "<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body>$bodyContent</soap:Body></soap:Envelope>"
 
+                // 3. DISPARAMOS LA PETICIÓN
                 val response = NetworkModule.httpClient.post(NetworkModule.BASE_URL) {
                     header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
-                    header("SOAPAction", "http://tempuri.org/$soapActionName")
-                    // --- ¡NUEVO!: INYECTAMOS LA COOKIE EN LA PETICIÓN ---
+                    // EL SECRETO: Agregamos comillas dobles literales alrededor de la acción
+                    header("SOAPAction", "\"http://tempuri.org/$soapActionName\"")
                     header("Cookie", NetworkModule.cookieSesion)
                     setBody(soapRequest)
                 }
 
                 val responseBody = response.bodyAsText()
 
-                // (Opcional) Puedes dejar este println para confirmar que ya llegan los datos
                 println("====== RESPUESTA CRUDA DEL SICE ($seccion) ======")
                 println(responseBody)
                 println("=================================================")
