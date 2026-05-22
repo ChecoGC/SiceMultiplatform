@@ -10,6 +10,8 @@ plugins {
     id("app.cash.sqldelight") version "2.0.1"
 }
 
+val ktorVersion = "2.3.11"
+
 kotlin {
     jvmToolchain(17)
     androidTarget {
@@ -22,10 +24,14 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation("app.cash.sqldelight:android-driver:2.0.1")
+            implementation("io.ktor:ktor-client-okhttp:${ktorVersion}")
         }
         commonMain.dependencies {
             implementation("app.cash.sqldelight:coroutines-extensions:2.0.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+            implementation("io.ktor:ktor-client-core:${ktorVersion}")
+            implementation("io.ktor:ktor-client-content-negotiation:${ktorVersion}")
+            implementation("io.ktor:ktor-client-auth:${ktorVersion}")
             implementation(compose.materialIconsExtended)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -41,6 +47,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation("app.cash.sqldelight:sqlite-driver:2.0.1")
+            implementation("io.ktor:ktor-client-okhttp:${ktorVersion}")
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }

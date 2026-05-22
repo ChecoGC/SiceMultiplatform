@@ -6,6 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import com.example.sicemultiplatform.utils.NetworkModule
+import com.example.sicemultiplatform.utils.XmlParser
 
 class LoginViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
@@ -31,25 +36,58 @@ class LoginViewModel : ViewModel() {
             isLoading = true
             errorMessage = ""
             try {
-                // Aquí se conectará Ktor en el futuro.
-                // Por ahora simulamos una respuesta exitosa del servidor SICE.
                 currentMatricula = matricula
 
-                // Cargamos el perfil inicial simulado
-                profileData = """{
-                    "nombre": "ALONSO GUZMAN RUIZ",
-                    "matricula": "$matricula",
-                    "carrera": "INGENIERÍA EN SISTEMAS COMPUTACIONALES",
-                    "especialidad": "TECNOLOGÍAS PARA LA INDUSTRIA 4.0",
-                    "semActual": "8",
-                    "estatus": "ACTIVO",
-                    "cdtosAcumulados": "213"
-                }"""
+                // 1. ARMAMOS EL SOBRE SOAP (El XML que se envía al servidor)
+                val soapRequest = """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+                      <soap:Body>
+                        <accesoLogin xmlns="http://tempuri.org/">
+                          <strMatricula>$matricula</strMatricula>
+                          <strContrasenia>$password</strContrasenia>
+                          <tipoUsuario>ALUMNO</tipoUsuario>
+                        </accesoLogin>
+                      </soap:Body>
+                    </soap:Envelope>
+                """.trimIndent()
 
-                isLoggedIn = true // Le da el acceso a la app
-                currentSection = "PERFIL"
+                // 2. DISPARAMOS LA PETICIÓN CON KTOR
+                val response = NetworkModule.httpClient.post(NetworkModule.BASE_URL) {
+                    header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
+                    header("SOAPAction", "http://tempuri.org/accesoLogin")
+                    setBody(soapRequest)
+                }
+
+                // --- ¡NUEVO!: ATRAPAMOS LA COOKIE MANUALMENTE ---
+                val rawCookies = response.headers.getAll("Set-Cookie")
+                var sessionCookies = ""
+                rawCookies?.forEach { cookieString ->
+                    // Cortamos la basura y nos quedamos solo con la llave pura (.ASPXAUTH)
+                    sessionCookies += cookieString.substringBefore(";") + "; "
+                }
+                NetworkModule.cookieSesion = sessionCookies
+                // ------------------------------------------------
+
+                // 3. LEEMOS LA RESPUESTA
+                val responseBody = response.bodyAsText()
+
+                // Verificamos si la respuesta XML fue exitosa ("accesoLoginResult" suele traer un boolean o un XML)
+                val resultadoLogin = XmlParser.extraerContenidoXml(responseBody, "accesoLoginResult")
+
+                // Aquí depende exactamente de qué regresa tu servidor en caso de error
+                if (resultadoLogin.contains("false", ignoreCase = true) || resultadoLogin.contains("error", ignoreCase = true)) {
+                    errorMessage = "Credenciales incorrectas o error en el servidor."
+                } else {
+                    // ¡Login Exitoso! Ktor ya guardó la Cookie en memoria automáticamente.
+                    isLoggedIn = true
+                    currentSection = "PERFIL"
+                    // Lanzamos la carga de información real usando la cookie
+                    cargarInformacion(matricula, "PERFIL")
+                }
+
             } catch (e: Exception) {
-                errorMessage = "Error de autenticación: ${e.message}"
+                errorMessage = "Error de conexión: ${e.message}"
             } finally {
                 isLoading = false
             }
@@ -64,48 +102,57 @@ class LoginViewModel : ViewModel() {
             isLoading = true
             errorMessage = ""
             try {
-                // Simulamos las respuestas en crudo de las peticiones para alimentar tus parsers
-                profileData = when (seccion) {
-                    "PERFIL" -> """{
-                        "nombre": "ALONSO GUZMAN RUIZ",
-                        "matricula": "$matricula",
-                        "carrera": "INGENIERÍA EN SISTEMAS COMPUTACIONALES",
-                        "especialidad": "TECNOLOGÍAS PARA LA INDUSTRIA 4.0",
-                        "semActual": "8",
-                        "estatus": "ACTIVO",
-                        "cdtosAcumulados": "213"
-                    }"""
-
-                    "CARGA" -> """[
-                        {"Materia": "PROGRAMACION WEB III", "Docente": "Ing. Gustavo Ivan Vega", "Grupo": "A", "Creditos": "5"},
-                        {"Materia": "TALLER DE INVESTIGACION II", "Docente": "Dra. Maria Lopez", "Grupo": "B", "Creditos": "4"},
-                        {"Materia": "INTERNET DE LAS COSAS", "Docente": "Dr. Alejandro Silva", "Grupo": "A", "Creditos": "5"},
-                        {"Materia": "SIMULACION", "Docente": "Ing. Juana Martínez", "Grupo": "C", "Creditos": "5"},
-                        {"Materia": "PROGRAMACION MOVIL II", "Docente": "Mtro. Gustavo Ivan Vega", "Grupo": "A", "Creditos": "5"}
-                    ]"""
-
-                    "KARDEX" -> """[
-                        {"Materia": "TALLER DE ETICA", "Calif": "82", "S1": "1", "Cdts": "4", "Acred": "Ordinario"},
-                        {"Materia": "TALLER DE ADMON", "Calif": "86", "S1": "1", "Cdts": "4", "Acred": "Regularización"},
-                        {"Materia": "FUND.INVESTIGAC", "Calif": "82", "S1": "1", "Cdts": "4", "Acred": "Ordinario"},
-                        {"Materia": "ACT. COMPLEM.I", "Calif": "100", "S1": "1", "Cdts": "1", "Acred": "Ordinario"}
-                    ]"""
-
-                    "CALIF_UNI" -> """[
-                        {"Materia": "PROGRAMACION MOVIL II", "C1": "85", "C2": "92", "C3": "88", "C4": "90"},
-                        {"Materia": "SIMULACION", "C1": "74", "C2": "80", "C3": "85", "C4": "60"}
-                    ]"""
-
-                    "CALIF_FINAL" -> """[
-                        {"Materia": "PROGRAMACION MOVIL II", "CalifFinal": "89", "Observaciones": "AC"},
-                        {"Materia": "SIMULACION", "CalifFinal": "75", "Observaciones": "AC"},
-                        {"Materia": "INTERNET DE LAS COSAS", "CalifFinal": "90", "Observaciones": "AC"}
-                    ]"""
-
-                    else -> ""
+                val soapActionName = when (seccion) {
+                    "PERFIL" -> "getAlumnoAcademicoWithLineamiento"
+                    "CARGA" -> "getCargaAcademicaByAlumno"
+                    "KARDEX" -> "getAllKardexConPromedioByAlumno"
+                    "CALIF_UNI" -> "getCalifUnidadesByAlumno"
+                    "CALIF_FINAL" -> "getAllCalifFinalByAlumnos"
+                    else -> throw Exception("Sección desconocida")
                 }
+
+                // El SICENET es delicado con los nombres de las variables
+                val parametroXML = if (seccion == "PERFIL") {
+                    "<strMatricula>$matricula</strMatricula>"
+                } else {
+                    "<aluControl>$matricula</aluControl>"
+                }
+
+                val soapRequest = """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+                      <soap:Body>
+                        <$soapActionName xmlns="http://tempuri.org/">
+                          $parametroXML
+                        </$soapActionName>
+                      </soap:Body>
+                    </soap:Envelope>
+                """.trimIndent()
+
+                val response = NetworkModule.httpClient.post(NetworkModule.BASE_URL) {
+                    header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
+                    header("SOAPAction", "http://tempuri.org/$soapActionName")
+                    // --- ¡NUEVO!: INYECTAMOS LA COOKIE EN LA PETICIÓN ---
+                    header("Cookie", NetworkModule.cookieSesion)
+                    setBody(soapRequest)
+                }
+
+                val responseBody = response.bodyAsText()
+
+                // (Opcional) Puedes dejar este println para confirmar que ya llegan los datos
+                println("====== RESPUESTA CRUDA DEL SICE ($seccion) ======")
+                println(responseBody)
+                println("=================================================")
+
+                if (responseBody.contains("Server was unable to process request") || responseBody.contains("Error de seguridad")) {
+                    errorMessage = "Error de sesión al consultar $seccion. Vuelve a iniciar sesión."
+                    isLoggedIn = false
+                } else {
+                    profileData = responseBody
+                }
+
             } catch (e: Exception) {
-                errorMessage = "Error al recuperar datos locales: ${e.message}"
+                errorMessage = "Error de red al descargar $seccion: ${e.message}"
             } finally {
                 isLoading = false
             }

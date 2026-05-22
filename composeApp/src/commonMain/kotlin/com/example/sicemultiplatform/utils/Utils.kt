@@ -2,7 +2,6 @@ package com.example.sicemultiplatform.utils
 
 import kotlinx.serialization.json.*
 
-// 1. EL PARSER DE XML (Queda 100% igual)
 object XmlParser {
     fun extraerContenidoXml(xml: String, tag: String): String {
         val startTag = "<$tag>"
@@ -20,9 +19,6 @@ object XmlParser {
     }
 }
 
-// =========================================================
-// FUNCIÓN AYUDANTE PARA KOTLIN MULTIPLATFORM (Imita a org.json)
-// =========================================================
 fun JsonObject.optString(key: String, fallback: String = ""): String {
     val element = this[key]
     if (element == null || element is JsonNull) return fallback
@@ -31,10 +27,8 @@ fun JsonObject.optString(key: String, fallback: String = ""): String {
 }
 
 // =========================================================
-// MODELOS Y PARSERS
-// =========================================================
-
 // MODELO PARA CARGA ACADEMICA
+// =========================================================
 data class MateriaCarga(
     val materia: String,
     val docente: String,
@@ -45,6 +39,9 @@ data class MateriaCarga(
 fun parsearCargaAcademica(jsonString: String): List<MateriaCarga> {
     val lista = mutableListOf<MateriaCarga>()
     try {
+        // ESCUDO DE SEGURIDAD
+        if (jsonString.contains("Cargando datos")) return lista
+
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
         for (item in jsonArray) {
             val obj = item.jsonObject
@@ -63,7 +60,9 @@ fun parsearCargaAcademica(jsonString: String): List<MateriaCarga> {
     return lista
 }
 
+// =========================================================
 // MODELO PARA PERFIL ACADEMICO
+// =========================================================
 data class PerfilAcademico(
     val nombre: String,
     val matricula: String,
@@ -76,6 +75,9 @@ data class PerfilAcademico(
 
 fun parsearPerfilAcademico(jsonString: String): PerfilAcademico? {
     return try {
+        // ESCUDO DE SEGURIDAD (Regresa null si no hay datos)
+        if (jsonString.contains("Cargando datos")) return null
+
         val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
         PerfilAcademico(
             nombre = jsonObject.optString("nombre", "Sin nombre"),
@@ -92,7 +94,9 @@ fun parsearPerfilAcademico(jsonString: String): PerfilAcademico? {
     }
 }
 
+// =========================================================
 // MODELO PARA KARDEX
+// =========================================================
 data class MateriaKardex(
     val materia: String,
     val calificacion: String,
@@ -104,6 +108,9 @@ data class MateriaKardex(
 fun parsearKardex(jsonString: String): List<MateriaKardex> {
     val lista = mutableListOf<MateriaKardex>()
     try {
+        // ESCUDO DE SEGURIDAD
+        if (jsonString.contains("Cargando datos")) return lista
+
         val startIndex = jsonString.indexOfFirst { it == '{' || it == '[' }
         val endIndex = jsonString.indexOfLast { it == '}' || it == ']' }
 
@@ -150,7 +157,9 @@ fun parsearKardex(jsonString: String): List<MateriaKardex> {
     return lista
 }
 
+// =========================================================
 // MODELO PARA CALIFICACION POR UNIDAD
+// =========================================================
 data class CalificacionUnidad(
     val materia: String,
     val unidades: List<String>
@@ -159,6 +168,9 @@ data class CalificacionUnidad(
 fun parsearCalifUnidades(jsonString: String): List<CalificacionUnidad> {
     val lista = mutableListOf<CalificacionUnidad>()
     try {
+        // ESCUDO DE SEGURIDAD
+        if (jsonString.contains("Cargando datos")) return lista
+
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
 
         for (item in jsonArray) {
@@ -180,7 +192,9 @@ fun parsearCalifUnidades(jsonString: String): List<CalificacionUnidad> {
     return lista
 }
 
+// =========================================================
 // MODELO FINAL
+// =========================================================
 data class CalificacionFinal(
     val materia: String,
     val calificacion: String,
@@ -190,6 +204,9 @@ data class CalificacionFinal(
 fun parsearCalificacionFinal(jsonString: String): List<CalificacionFinal> {
     val lista = mutableListOf<CalificacionFinal>()
     try {
+        // ESCUDO DE SEGURIDAD
+        if (jsonString.contains("Cargando datos")) return lista
+
         val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
 
         for (item in jsonArray) {
