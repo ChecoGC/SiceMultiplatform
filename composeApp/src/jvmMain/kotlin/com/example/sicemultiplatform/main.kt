@@ -2,14 +2,11 @@ package com.example.sicemultiplatform// Archivo: shared/src/desktopMain/kotlin/M
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.example.sicemultiplatform.utils.DatabaseDriverFactory
+import com.example.sicemultiplatform.utils.DesktopDatabaseDriverFactory
 
 fun main() = application {
-    // Definimos cómo se ve la ventana en Windows/macOS
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "SICE net - Desktop Client"
-    ) {
-        // Mandamos llamar exactamente a la misma UI universal
-        App()
+    Window(onCloseRequest = ::exitApplication, title = "SICE net") {
+        App(driverFactory = DesktopDatabaseDriverFactory())
     }
 }

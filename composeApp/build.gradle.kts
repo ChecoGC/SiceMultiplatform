@@ -100,7 +100,8 @@ compose.desktop {
 sqldelight {
     databases {
         create("AppDatabase") {
-            packageName.set("com.tu.paquete.db")
+            // Este es el paquete donde se generarán las clases rojas
+            packageName.set("com.example.sicemultiplatform.database")
         }
     }
 }

@@ -1,0 +1,7 @@
+package com.example.sicemultiplatform.utils
+
+import app.cash.sqldelight.db.SqlDriver
+
+interface DatabaseDriverFactory {
+    fun createDriver(): SqlDriver
+}

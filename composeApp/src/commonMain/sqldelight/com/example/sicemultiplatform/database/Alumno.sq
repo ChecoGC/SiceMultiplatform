@@ -1,0 +1,14 @@
+CREATE TABLE AlumnoEntity (
+    matricula TEXT NOT NULL,
+    seccion TEXT NOT NULL,
+    xmlData TEXT NOT NULL,
+    PRIMARY KEY (matricula, seccion)
+);
+
+insertAlumno:
+INSERT OR REPLACE INTO AlumnoEntity(matricula, seccion, xmlData)
+VALUES (?, ?, ?);
+
+getAlumnoData:
+SELECT * FROM AlumnoEntity
+WHERE matricula = ? AND seccion = ?;

@@ -11,8 +11,11 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import com.example.sicemultiplatform.utils.NetworkModule
 import com.example.sicemultiplatform.utils.XmlParser
+import com.example.sicemultiplatform.database.AppDatabase
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(private val database: AppDatabase) : ViewModel() {
+
+    private val dbQueries = database.alumnoQueries
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf("")
     var offlineMessage by mutableStateOf("")
@@ -90,9 +93,17 @@ class LoginViewModel : ViewModel() {
                     cargarInformacion(matricula, "PERFIL")
                 }
 
-            } catch (e: Exception) {
-                errorMessage = "Error de conexión: ${e.message}"
-            } finally {
+            }catch (e: Exception) {
+
+                val datosOffline = dbQueries.getAlumnoData(currentMatricula, currentSection).executeAsOneOrNull()
+
+                if (datosOffline != null) {
+                    offlineMessage = "Estás navegando en Modo Offline"
+                    profileData = datosOffline.xmlData // Le pasamos el XML viejo a la pantalla
+                } else {
+                    errorMessage = "Error de red y no hay datos guardados: ${e.message}"
+                }
+            }finally {
                 isLoading = false
             }
         }
@@ -131,12 +142,12 @@ class LoginViewModel : ViewModel() {
 
                 val soapRequest = "<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body>$bodyContent</soap:Body></soap:Envelope>"
 
-                // 3. DISPARAMOS LA PETICIÓN
+                println("--- DEBUG: Enviando Cookie: ${NetworkModule.cookieSesion} ---")
+
                 val response = NetworkModule.httpClient.post(NetworkModule.BASE_URL) {
                     header(HttpHeaders.ContentType, "text/xml; charset=utf-8")
-                    // EL SECRETO: Agregamos comillas dobles literales alrededor de la acción
                     header("SOAPAction", "\"http://tempuri.org/$soapActionName\"")
-                    header("Cookie", NetworkModule.cookieSesion)
+                    header("Cookie", NetworkModule.cookieSesion) // <-- ¿Esta variable tiene contenido?
                     setBody(soapRequest)
                 }
 
@@ -151,10 +162,25 @@ class LoginViewModel : ViewModel() {
                     isLoggedIn = false
                 } else {
                     profileData = responseBody
+
+                    // Aquí llamamos a la función exacta que vimos en el archivo generado
+                    dbQueries.insertAlumno(
+                        matricula = currentMatricula,
+                        seccion = seccion,
+                        xmlData = responseBody
+                    )
                 }
 
             } catch (e: Exception) {
-                errorMessage = "Error de red al descargar $seccion: ${e.message}"
+                // Aquí usamos la consulta tal cual la define el archivo generado
+                val datosOffline = dbQueries.getAlumnoData(currentMatricula, seccion).executeAsOneOrNull()
+
+                if (datosOffline != null) {
+                    offlineMessage = "Estás navegando en Modo Offline"
+                    profileData = datosOffline.xmlData
+                } else {
+                    errorMessage = "Error de red y no hay datos guardados: ${e.message}"
+                }
             } finally {
                 isLoading = false
             }

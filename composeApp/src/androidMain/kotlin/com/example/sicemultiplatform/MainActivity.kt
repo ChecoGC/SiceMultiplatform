@@ -3,23 +3,15 @@ package com.example.sicemultiplatform
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.activity.compose.setContent
+import com.example.sicemultiplatform.utils.AndroidDatabaseDriverFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
 
-            App()
+        setContent {
+            // Aquí usamos la fábrica nativa de Android, pasándole el contexto
+            App(driverFactory = AndroidDatabaseDriverFactory(context = this@MainActivity))
         }
     }
-}
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }

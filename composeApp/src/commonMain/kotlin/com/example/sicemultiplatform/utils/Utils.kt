@@ -73,10 +73,16 @@ data class PerfilAcademico(
 )
 
 fun parsearPerfilAcademico(jsonString: String): PerfilAcademico? {
-    return try {
-        if (jsonString.isBlank() || jsonString.contains("Cargando datos")) return null
+    // 1. Verificamos si hay error de redirección antes de intentar el try
+    if (jsonString.contains("Object moved") || jsonString.contains("<html>")) {
+        println("ERROR: El servidor nos está redirigiendo (Sesión perdida)")
+        return null // <--- EL CAMBIO ESTÁ AQUÍ: Devolver nulo explícitamente
+    }
 
+    return try {
+        val json = Json { ignoreUnknownKeys = true }
         val jsonObject = Json.parseToJsonElement(jsonString).jsonObject
+
         PerfilAcademico(
             nombre = jsonObject.optString("nombre", "Sin nombre"),
             matricula = jsonObject.optString("matricula", "N/A"),
@@ -88,7 +94,7 @@ fun parsearPerfilAcademico(jsonString: String): PerfilAcademico? {
         )
     } catch (e: Exception) {
         e.printStackTrace()
-        null
+        null // Si falla el parseo, también devolvemos null
     }
 }
 
