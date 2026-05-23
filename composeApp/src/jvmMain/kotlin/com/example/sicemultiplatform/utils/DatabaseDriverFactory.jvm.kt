@@ -6,12 +6,17 @@ import com.example.sicemultiplatform.database.AppDatabase
 
 class DesktopDatabaseDriverFactory : DatabaseDriverFactory {
     override fun createDriver(): SqlDriver {
+
+
+
         val driver = JdbcSqliteDriver("jdbc:sqlite:sice.db")
         try {
             AppDatabase.Schema.create(driver)
-        } catch (e: Exception) {
-            // Ignoramos si ya existe
+        }
+        catch (e: Exception) {
+
         }
         return driver
+
     }
 }
