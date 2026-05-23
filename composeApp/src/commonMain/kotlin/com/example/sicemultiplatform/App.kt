@@ -9,12 +9,12 @@ import com.example.sicemultiplatform.utils.DatabaseDriverFactory
 import com.example.sicemultiplatform.database.AppDatabase
 
 @Composable
-fun App(driverFactory: DatabaseDriverFactory) { // <-- Ahora recibe la fábrica
+fun App(driverFactory: DatabaseDriverFactory) {
     MaterialTheme {
-        // Construimos la base de datos universal
+
         val database = AppDatabase(driverFactory.createDriver())
 
-        // Le pasamos la base de datos al ViewModel
+
         val loginViewModel = viewModel { LoginViewModel(database) }
 
         if (!loginViewModel.isLoggedIn) {
