@@ -14,7 +14,6 @@ fun App(driverFactory: DatabaseDriverFactory) {
 
         val database = AppDatabase(driverFactory.createDriver())
 
-
         val loginViewModel = viewModel { LoginViewModel(database) }
 
         if (!loginViewModel.isLoggedIn) {

@@ -93,6 +93,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.example.sicemultiplatform"
             packageVersion = "1.0.0"
+            modules("java.sql")
         }
     }
 }
@@ -100,7 +101,6 @@ compose.desktop {
 sqldelight {
     databases {
         create("AppDatabase") {
-            // Este es el paquete donde se generarán las clases rojas
             packageName.set("com.example.sicemultiplatform.database")
         }
     }
